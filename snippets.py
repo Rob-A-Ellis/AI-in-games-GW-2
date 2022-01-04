@@ -93,6 +93,7 @@ class FrozenLake(Environment):
         self.absorbing_state = n_states - 1
         
         # TODO:
+        Environment.__init__(self, n_states, n_actions, max_steps, pi, seed=None)
         
     def step(self, action):
         state, reward, done = Environment.step(self, action)
