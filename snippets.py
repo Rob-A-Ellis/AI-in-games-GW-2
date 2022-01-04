@@ -194,12 +194,13 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
     return policy, value
 
 ################ Tabular model-free algorithms ################
-
-def choose_action(state):
+# Selects whether to go up, down, left, or right
+def choose_action(env, epsilon, q, state):
+    # Implements an epsilon greedy policy to facilitate exploration
     if np.random.uniform(0,1) < epsilon:
         action = np.random.randint(env.n_actions + 1)
     else:
-        action = np.argmax(q[s,:])
+        action = np.argmax(q[state,:])
     return action
 
 def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
@@ -214,14 +215,14 @@ def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
         s = env.reset()
         # TODO:
 
-        action = choose_action(s)
+        action = choose_action(env, epsilon[i], q, s)
 
         for j in range(env.max_steps):
             env.render()
 
             next_state, reward, done = env.step(action)
 
-            next_action = choose_action(next_state)
+            next_action = choose_action(env, epsilon[i], q, next_state)
 
             q[s, action] = q[s, action] + eta[i] * (reward + gamma * q[next_state, next_action] - q[s, action])
 
@@ -250,6 +251,22 @@ def q_learning(env, max_episodes, eta, gamma, epsilon, seed=None):
         s = env.reset()
         # TODO:
         
+        for j in range(env.max_steps):
+            action = choose_action(env, epsilon[i], q, s)
+
+            next_state, reward, done = env.step(action)
+
+            next_best_action = np.argmax(q[next_state])
+
+            q[s, action] = q[s, action] + eta[i] * (reward + gamma * q[next_state, next_best_action] - q[s, action])
+
+            s = next_state
+
+            reward += 1
+
+            if done:
+                break
+
     policy = q.argmax(axis=1)
     value = q.max(axis=1)
         
