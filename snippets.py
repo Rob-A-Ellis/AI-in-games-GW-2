@@ -159,7 +159,7 @@ def play(env):
 
 ################ Model-based algorithms ################
 
- def policy_evaluation(env, policy, gamma, theta, max_iterations):
+def policy_evaluation(env, policy, gamma, theta, max_iterations):
     value = np.zeros(env.n_states, dtype=np.float)
 
     # TODO:
@@ -195,6 +195,13 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
 
 ################ Tabular model-free algorithms ################
 
+def choose_action(state):
+    if np.random.uniform(0,1) < epsilon:
+        action = np.random.randint(env.n_actions + 1)
+    else:
+        action = np.argmax(q[s,:])
+    return action
+
 def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
     random_state = np.random.RandomState(seed)
     
@@ -206,6 +213,25 @@ def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
     for i in range(max_episodes):
         s = env.reset()
         # TODO:
+
+        action = choose_action(s)
+
+        for j in range(env.max_steps):
+            env.render()
+
+            next_state, reward, done = env.step(action)
+
+            next_action = choose_action(next_state)
+
+            q[s, action] = q[s, action] + eta[i] * (reward + gamma * q[next_state, next_action] - q[s, action])
+
+            s = next_state
+            action = next_action
+
+            reward += 1
+
+            if done:
+                break
     
     policy = q.argmax(axis=1)
     value = q.max(axis=1)
