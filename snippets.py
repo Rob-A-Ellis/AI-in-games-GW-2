@@ -153,7 +153,7 @@ class FrozenLake(Environment):
             new_state = state + self.columns
         if action == 3:
             new_state = state + 1
-            
+
         return new_state
         
     def step(self, action):
@@ -388,7 +388,7 @@ def linear_sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
         for j in range(env.max_steps):
             next_state, reward, done = env.step(action)
 
-            delta = r - q[action]
+            delta = reward - q[action]
             q = next_state.dot(theta)
 
             next_action = choose_action(env, epsilon, q, next_state)
