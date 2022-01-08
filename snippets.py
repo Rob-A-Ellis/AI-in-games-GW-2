@@ -486,3 +486,6 @@ def main():
                                    gamma, epsilon, seed=seed)
     policy, value = linear_env.decode_policy(parameters)
     linear_env.render(policy, value)
+
+if __name__ == '__main__':
+    main()
