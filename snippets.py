@@ -93,7 +93,68 @@ class FrozenLake(Environment):
         self.absorbing_state = n_states - 1
         
         # TODO:
-        Environment.__init__(self, n_states, n_actions, max_steps, pi, seed=None)
+        super(FrozenLake, self).__init__(n_states, n_actions, max_steps, pi, seed)
+
+        self.probs = np.zeros((self.n_states, self.n_states, self.n_actions), dtype=float)
+        self.rewards = np.zeros((self.n_states, self.n_states, self.n_actions), dtype=float)
+
+        self.calc_probs()
+        self.calc_rewards()
+
+        self.check_probs()
+
+    def calc_probs(self):
+        for state in range(self.n_states):
+            if state == self.absorbing_state or self.lake_flat[state] in ('#','$'):
+                self.probs[self.absorbing_state,state,:] = 1
+                continue
+            for action in range(self.n_actions):
+                for slip_action in range(self.n_actions):
+                    next_state = self.act(slip_action, state)
+                    self.probs[next_state,state,action] += self.slip/self.n_actions
+                    if action == slip_action:
+                        self.probs[next_state,state,action] += 1 - self.slip
+
+    def check_probs(self):
+        target = np.load('p.npy')
+
+        if self.probs.all() == target.all():
+            print("Probs match target")
+        else:
+            print("Probs differ from target")
+
+    def calc_rewards(self):
+        for state in range(self.n_states):
+            if state != self.absorbing_state:
+                if self.lake_flat[state] == '$':
+                    self.rewards[self.absorbing_state,state,:] = 1
+
+    def act(self, action, state):
+        _, self.columns = self.lake.shape
+
+        if state - self.columns < 0:
+            if action == 0:
+                return state
+        if state % self.columns == 0:
+            if action == 1:
+                return state
+        if state + self.columns >= self.n_states - 1:
+            if action == 2:
+                return state
+        if (state + 1) % self.columns == 0:
+            if action == 3:
+                return state
+        
+        if action == 0:
+            new_state = state - self.columns
+        if action == 1:
+            new_state = state - 1
+        if action == 2:
+            new_state = state + self.columns
+        if action == 3:
+            new_state = state + 1
+            
+        return new_state
         
     def step(self, action):
         state, reward, done = Environment.step(self, action)
@@ -103,18 +164,10 @@ class FrozenLake(Environment):
         return state, reward, done
         
     def p(self, next_state, state, action):
-        # Loads the array stored in p.npy
-        prob_array = np.load('p.npy')
-
-        # Returns the value from the relevant index in the array
-        return prob_array[next_state, state, action]
+        return self.probs[next_state,state,action]
     
     def r(self, next_state, state, action):
-        # Returns a reward of 1 if the agent is taking an action at the goal
-        if state == self.absorbing_state:
-            return 1
-        else:
-            return 0
+        return self.rewards[next_state,state,action]
    
     def render(self, policy=None, value=None):
         if policy is None:
