@@ -328,6 +328,25 @@ def linear_sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
         q = features.dot(theta)
 
         # TODO:
+
+        state = features
+        action = choose_action(env, epsilon, q, state)
+
+        for j in range(env.max_steps):
+            next_state, reward, done = env.step(action)
+
+            delta = r - q[action]
+            q = next_state.dot(theta)
+
+            next_action = choose_action(env, epsilon, q, next_state)
+
+            delta += gamma * q[next_action]
+            theta += eta[i] * delta * state[action,:]
+            state = next_state
+            action = next_action
+
+            if done:
+                break
     
     return theta
     
