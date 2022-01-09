@@ -92,23 +92,28 @@ class FrozenLake(Environment):
         
         self.absorbing_state = n_states - 1
         
-        # TODO:
+        # Calls super constructor for the FrozenLake environment
         super(FrozenLake, self).__init__(n_states, n_actions, max_steps, pi, seed)
 
         self.probs = np.zeros((self.n_states, self.n_states, self.n_actions), dtype=float)
         self.rewards = np.zeros((self.n_states, self.n_states, self.n_actions), dtype=float)
 
+        # Calculates the probabilities and expected rewards
         self.calc_probs()
         self.calc_rewards()
 
+        # Checks the calculated probabilities against the target
         self.check_probs()
 
     def calc_probs(self):
+        # Steps through all of the possible states
         for state in range(self.n_states):
+            # Checks if the agent is in an abosorbing or end state
             if state == self.absorbing_state or self.lake_flat[state] in ('#','$'):
                 self.probs[self.absorbing_state,state,:] = 1
                 continue
             for action in range(self.n_actions):
+                # Calculates the probabilities and factors in the slip chance
                 for slip_action in range(self.n_actions):
                     next_state = self.act(slip_action, state)
                     self.probs[next_state,state,action] += self.slip/self.n_actions
@@ -116,45 +121,59 @@ class FrozenLake(Environment):
                         self.probs[next_state,state,action] += 1 - self.slip
 
     def check_probs(self):
+        # Loads the target probabilities
         target = np.load('p.npy')
 
+        # Checks all of the calculated probs against all of the targets
         if self.probs.all() == target.all():
             print("Probs match target")
         else:
             print("Probs differ from target")
 
     def calc_rewards(self):
+        # Steps through all of the possible states
         for state in range(self.n_states):
             if state != self.absorbing_state:
+                # Sets expected reward to 1 only if the agent is at the goal state
                 if self.lake_flat[state] == '$':
                     self.rewards[self.absorbing_state,state,:] = 1
+
+    def valid_act(self, action, state):
+        # Gets the number of columns in the lake array
+        _, self.columns = self.lake.shape
+
+        # Checks if the action being taken is possible or not
+        elif state - self.columns < 0:
+            if action == 0:
+                return False
+        elif state % self.columns == 0:
+            if action == 1:
+                return False
+        elif state + self.columns >= self.n_states - 1:
+            if action == 2:
+                return False
+        elif (state + 1) % self.columns == 0:
+            if action == 3:
+                return False
+        else:
+            return True
 
     def act(self, action, state):
         _, self.columns = self.lake.shape
 
-        if state - self.columns < 0:
+        # If the action is valid then the resultant state is returned
+        if valid_act(action, state):
             if action == 0:
-                return state
-        if state % self.columns == 0:
+                next_state = state - self.columns
             if action == 1:
-                return state
-        if state + self.columns >= self.n_states - 1:
+                next_state = state - 1
             if action == 2:
-                return state
-        if (state + 1) % self.columns == 0:
+                next_state = state + self.columns
             if action == 3:
-                return state
-        
-        if action == 0:
-            new_state = state - self.columns
-        if action == 1:
-            new_state = state - 1
-        if action == 2:
-            new_state = state + self.columns
-        if action == 3:
-            new_state = state + 1
-
-        return new_state
+                next_state = state + 1
+            return next_state
+        else:
+            return state
         
     def step(self, action):
         state, reward, done = Environment.step(self, action)
