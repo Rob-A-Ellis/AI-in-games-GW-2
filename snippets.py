@@ -277,20 +277,6 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
     return policy, value
 
 ################ Tabular model-free algorithms ################
-# Selects whether to go up, down, left, or right
-def choose_action(env, epsilon, q, random_state=None):
-    # Implements an epsilon greedy policy to facilitate exploration
-    if np.random.uniform(0,1) < epsilon:
-        # action = np.random.randint(env.n_actions + 1)
-        action = np.random.randint(env.n_actions)
-    else:
-        # action = np.argmax(q[state,:])
-        best_action = np.max(q)
-        best_action_index = np.flatnonzero(best_action == q)
-        action = best_action_index
-        print(f"{best_action_index = }")
-    return action
-
 class epsilon_greedy_selection:
     def __init__(self, epsilon, random_state=None):
         if random_state is None:
