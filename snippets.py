@@ -138,26 +138,6 @@ class FrozenLake(Environment):
                 if self.lake_flat[state] == '$':
                     self.rewards[self.absorbing_state,state,:] = 1
 
-    def valid_act(self, action, state):
-        # Gets the number of columns in the lake array
-        _, self.columns = self.lake.shape
-
-        # Checks if the action being taken is possible or not
-        if state - self.columns < 0:
-            if action == 0:
-                return False
-        elif state % self.columns == 0:
-            if action == 1:
-                return False
-        elif state + self.columns >= self.n_states - 1:
-            if action == 2:
-                return False
-        elif (state + 1) % self.columns == 0:
-            if action == 3:
-                return False
-        else:
-            return True
-
     def act(self, action, state):
         _, self.columns = self.lake.shape
 
@@ -448,6 +428,27 @@ def linear_q_learning(env, max_episodes, eta, gamma, epsilon, seed=None):
         
         # TODO:
 
+        q = features.dot(theta)
+
+        state = features
+
+        epsilon_selection = epsilon_greedy_selection(epsilon[i], random_state)
+        action = epsilon_selection.selection(q)
+
+        done = False
+        while not done:
+            next_state, reward, done = env.step(action)
+
+            delta = reward - q[action]
+            q = next_state.dot(theta)
+
+            next_action = epsilon_selection.selection(q)
+
+            theta += eta[i] * (delta + (gamma * np.max(q))) * state[action,:]
+
+            state = next_state
+            action = next_action
+
     return theta    
 
 ################ Main function ################
@@ -512,12 +513,12 @@ def main():
     
     print('')
     
-    # print('## Linear Q-learning')
+    print('## Linear Q-learning')
     
-    # parameters = linear_q_learning(linear_env, max_episodes, eta,
-    #                                gamma, epsilon, seed=seed)
-    # policy, value = linear_env.decode_policy(parameters)
-    # linear_env.render(policy, value)
+    parameters = linear_q_learning(linear_env, max_episodes, eta,
+                                   gamma, epsilon, seed=seed)
+    policy, value = linear_env.decode_policy(parameters)
+    linear_env.render(policy, value)
 
 if __name__ == '__main__':
     main()
