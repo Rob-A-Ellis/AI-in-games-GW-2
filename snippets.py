@@ -143,7 +143,7 @@ class FrozenLake(Environment):
         _, self.columns = self.lake.shape
 
         # Checks if the action being taken is possible or not
-        elif state - self.columns < 0:
+        if state - self.columns < 0:
             if action == 0:
                 return False
         elif state % self.columns == 0:
@@ -161,19 +161,30 @@ class FrozenLake(Environment):
     def act(self, action, state):
         _, self.columns = self.lake.shape
 
-        # If the action is valid then the resultant state is returned
-        if valid_act(action, state):
+        # Checks if the action being taken is possible or not
+        if state - self.columns < 0:
             if action == 0:
-                next_state = state - self.columns
+                return state
+        if state % self.columns == 0:
             if action == 1:
-                next_state = state - 1
+                return state
+        if state + self.columns >= self.n_states - 1:
             if action == 2:
-                next_state = state + self.columns
+                return state
+        if (state + 1) % self.columns == 0:
             if action == 3:
-                next_state = state + 1
-            return next_state
-        else:
-            return state
+                return state
+
+        # If the action is valid then the resultant state is returned
+        if action == 0:
+            next_state = state - self.columns
+        if action == 1:
+            next_state = state - 1
+        if action == 2:
+            next_state = state + self.columns
+        if action == 3:
+            next_state = state + 1
+        return next_state
         
     def step(self, action):
         state, reward, done = Environment.step(self, action)
@@ -267,13 +278,36 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
 
 ################ Tabular model-free algorithms ################
 # Selects whether to go up, down, left, or right
-def choose_action(env, epsilon, q, state):
+def choose_action(env, epsilon, q, random_state=None):
     # Implements an epsilon greedy policy to facilitate exploration
     if np.random.uniform(0,1) < epsilon:
-        action = np.random.randint(env.n_actions + 1)
+        # action = np.random.randint(env.n_actions + 1)
+        action = np.random.randint(env.n_actions)
     else:
-        action = np.argmax(q[state,:])
+        # action = np.argmax(q[state,:])
+        best_action = np.max(q)
+        best_action_index = np.flatnonzero(best_action == q)
+        action = best_action_index
+        print(f"{best_action_index = }")
     return action
+
+class epsilon_greedy_selection:
+    def __init__(self, epsilon, random_state=None):
+        if random_state is None:
+            self.random_state = np.random.RandomState()
+        else:
+            self.random_state = random_state
+
+        self.epsilon = epsilon
+
+    def selection(self, q_s):
+        if self.random_state.uniform(0, 1) < self.epsilon:
+            return self.random_state.randint(0, len(q_s))
+        else:
+            best_action = np.max(q_s)
+            best_action_index = np.flatnonzero(best_action == q_s)
+
+            return self.random_state.choice(best_action_index)
 
 def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
     random_state = np.random.RandomState(seed)
@@ -287,21 +321,18 @@ def sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
         s = env.reset()
         # TODO:
 
-        action = choose_action(env, epsilon[i], q, s)
+        epsilon_selection = epsilon_greedy_selection(epsilon[i], random_state)
+        action = epsilon_selection.selection(q[s])
 
         for j in range(env.max_steps):
-            env.render()
-
             next_state, reward, done = env.step(action)
 
-            next_action = choose_action(env, epsilon[i], q, next_state)
+            next_action = epsilon_selection.selection(q[next_state])
 
-            q[s, action] = q[s, action] + eta[i] * (reward + gamma * q[next_state, next_action] - q[s, action])
+            q[s, action] = q[s, action] + (eta[i] * (reward + (gamma * q[next_state, next_action]) - q[s, action]))
 
             s = next_state
             action = next_action
-
-            reward += 1
 
             if done:
                 break
@@ -322,19 +353,19 @@ def q_learning(env, max_episodes, eta, gamma, epsilon, seed=None):
     for i in range(max_episodes):
         s = env.reset()
         # TODO:
+
+        epsilon_selection = epsilon_greedy_selection(epsilon[i], random_state)
+        action = epsilon_selection.selection(q[s])
         
         for j in range(env.max_steps):
-            action = choose_action(env, epsilon[i], q, s)
-
             next_state, reward, done = env.step(action)
 
-            next_best_action = np.argmax(q[next_state])
+            next_action = epsilon_selection.selection(q[next_state])
 
-            q[s, action] = q[s, action] + eta[i] * (reward + gamma * q[next_state, next_best_action] - q[s, action])
+            q[s, action] = q[s, action] + (eta[i] * (reward + (gamma * np.max(q[next_state])) - q[s, action]))
 
             s = next_state
-
-            reward += 1
+            action = next_action
 
             if done:
                 break
@@ -402,23 +433,23 @@ def linear_sarsa(env, max_episodes, eta, gamma, epsilon, seed=None):
         # TODO:
 
         state = features
-        action = choose_action(env, epsilon, q, state)
 
-        for j in range(env.max_steps):
+        epsilon_selection = epsilon_greedy_selection(epsilon[i], random_state)
+        action = epsilon_selection.selection(q)
+
+        done = False
+        while not done:
             next_state, reward, done = env.step(action)
 
             delta = reward - q[action]
             q = next_state.dot(theta)
 
-            next_action = choose_action(env, epsilon, q, next_state)
+            next_action = epsilon_selection.selection(q)
 
-            delta += gamma * q[next_action]
-            theta += eta[i] * delta * state[action,:]
+            theta += eta[i] * (delta + (gamma * q[next_action])) * state[action,:]
+
             state = next_state
             action = next_action
-
-            if done:
-                break
     
     return theta
     
@@ -450,26 +481,26 @@ def main():
 
     env = FrozenLake(lake, slip=0.1, max_steps=16, seed=seed)
     
-    print('# Model-based algorithms')
+    # print('# Model-based algorithms')
     gamma = 0.9
     theta = 0.001
     max_iterations = 100
     
-    print('')
+    # print('')
     
-    print('## Policy iteration')
-    policy, value = policy_iteration(env, gamma, theta, max_iterations)
-    env.render(policy, value)
+    # print('## Policy iteration')
+    # policy, value = policy_iteration(env, gamma, theta, max_iterations)
+    # env.render(policy, value)
     
-    print('')
+    # print('')
     
-    print('## Value iteration')
-    policy, value = value_iteration(env, gamma, theta, max_iterations)
-    env.render(policy, value)
+    # print('## Value iteration')
+    # policy, value = value_iteration(env, gamma, theta, max_iterations)
+    # env.render(policy, value)
     
-    print('')
+    # print('')
     
-    print('# Model-free algorithms')
+    # print('# Model-free algorithms')
     max_episodes = 2000
     eta = 0.5
     epsilon = 0.5
@@ -499,12 +530,12 @@ def main():
     
     print('')
     
-    print('## Linear Q-learning')
+    # print('## Linear Q-learning')
     
-    parameters = linear_q_learning(linear_env, max_episodes, eta,
-                                   gamma, epsilon, seed=seed)
-    policy, value = linear_env.decode_policy(parameters)
-    linear_env.render(policy, value)
+    # parameters = linear_q_learning(linear_env, max_episodes, eta,
+    #                                gamma, epsilon, seed=seed)
+    # policy, value = linear_env.decode_policy(parameters)
+    # linear_env.render(policy, value)
 
 if __name__ == '__main__':
     main()
