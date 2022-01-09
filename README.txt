@@ -1,0 +1,1 @@
+In order to run the main function simply run snippets.py
