@@ -279,11 +279,7 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
 ################ Tabular model-free algorithms ################
 class epsilon_greedy_selection:
     def __init__(self, epsilon, random_state=None):
-        if random_state is None:
-            self.random_state = np.random.RandomState()
-        else:
-            self.random_state = random_state
-
+        self.random_state = random_state
         self.epsilon = epsilon
 
     def selection(self, q_s):
