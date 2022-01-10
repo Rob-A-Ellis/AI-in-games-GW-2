@@ -234,28 +234,37 @@ identity = np.identity(env.n_actions)
     stop = False
 
     while ini_iteration < max_iterations and not stop:
-        delta = 0
+        dt = 0
 
         for s in range(env.n_states):
             ini_value = value[s]
             policy_action_prob = identity[policy[s]]
             value[s] = np.sum(policy_action_prob * p[:,s,:] * (r[:,s,:] + (gamma * value.reshape(-1, 1))))
-            delta = max(delta, abs(ini_value - value[s]))
+            dt = max(dt, abs(ini_value - value[s]))
 
         ini_iteration += 1
-        stop = delta < theta
+        stop = dt < theta
         
     return value
     
 def policy_improvement(env, value, gamma):
     policy = np.zeros(env.n_states, dtype=int) 
  # obtaining models from the environment
-    p = env.probs
-    r = env.rewards
-
-    for s in range(env.n_states):
-        policy[s] = np.argmax(np.sum(p[:,s,:] * (r[:,s,:] + (gamma * value.reshape(-1, 1))), axis=0))
-
+       for state in range(env.n_states):
+        alpha = float('-inf')
+        correct_action = 0
+        for action in range(env.n_actions):
+            val = 0
+            for ns in range(env.n_states):
+                p = env.p(ns, state, action)
+                r = env.r(ns, state, action)
+                val += p * (r + gamma * value[ns])
+            # It will be determined as the best feedback
+            if alpha < val:
+                alpha = val
+               correct_action = action
+        # we need to store feedback in the array.
+        policy[state] = correct_action
     return policy
     
 def policy_iteration(env, gamma, theta, max_iterations, policy=None):
@@ -294,11 +303,11 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
         value = np.array(value, dtype=np.float)
  policy = np.zeros(env.n_states, dtype=int)
 
-    delta = abs(theta) + 1
+    dt = abs(theta) + 1
     iti = 0 
 
     while delta > theta and max_iterations > iti:
-        delta = 0
+        dt = 0
 
         for state in range(env.n_states):
             old_value = value[state]
@@ -318,7 +327,7 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
 
             value[state] = max(new_value)
 
-            delta = max(delta, np.abs(old_value - value[state]))
+            dt = max(dt, np.abs(old_value - value[state]))
         
         iti += 1
 
