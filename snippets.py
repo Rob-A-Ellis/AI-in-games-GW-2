@@ -223,16 +223,38 @@ def play(env):
 ################ Model-based algorithms ################
 
 def policy_evaluation(env, policy, gamma, theta, max_iterations):
-    value = np.zeros(env.n_states, dtype=np.float)
+    value = np.zeros(env.n_states, dtype=np.int)
+    
+identity = np.identity(env.n_actions)
+    # obtaining models
+    p = env.probs
+    r = env.rewards
 
-    # TODO:
+    ini_iteration = 0
+    stop = False
 
+    while ini_iteration < max_iterations and not stop:
+        delta = 0
+
+        for s in range(env.n_states):
+            ini_value = value[s]
+            policy_action_prob = identity[policy[s]]
+            value[s] = np.sum(policy_action_prob * p[:,s,:] * (r[:,s,:] + (gamma * value.reshape(-1, 1))))
+            delta = max(delta, abs(ini_value - value[s]))
+
+        ini_iteration += 1
+        stop = delta < theta
+        
     return value
     
 def policy_improvement(env, value, gamma):
-    policy = np.zeros(env.n_states, dtype=int)
-    
-    # TODO:
+    policy = np.zeros(env.n_states, dtype=int) 
+ # obtaining models from the environment
+    p = env.probs
+    r = env.rewards
+
+    for s in range(env.n_states):
+        policy[s] = np.argmax(np.sum(p[:,s,:] * (r[:,s,:] + (gamma * value.reshape(-1, 1))), axis=0))
 
     return policy
     
@@ -241,8 +263,27 @@ def policy_iteration(env, gamma, theta, max_iterations, policy=None):
         policy = np.zeros(env.n_states, dtype=int)
     else:
         policy = np.array(policy, dtype=int)
-    
-    # TODO:
+ prev_policy = np.zeros(env.n_states, dtype=int) # we need to keep track of past policies in order to determine when there has been no improvement and, as a result, when the policy should be terminated.
+
+   initial_iteration = 0
+
+    start = timeit.default_timer() # timer for the algorithm
+
+    while initial_iteration < max_iterations:
+        value = policy_evaluation(env, policy, gamma, theta, max_iterations)
+        policy = policy_improvement(env, value, gamma)
+        initial_iteration += 1
+
+        if np.all(np.equal(policy, prev_policy)): # if the previous value is equal to the new value, stop the algorithm.
+            break
+        else:
+            prev_policy = policy
+
+    end = timeit.default_timer()
+
+    value = policy_evaluation(env, policy, gamma, theta, max_iterations)
+    if experiments:
+        print("The policy iteration has taken {} iterations . The algorithm has run in {} ms".format(initial_iteration,end-start))
         
     return policy, value
     
@@ -251,8 +292,52 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
         value = np.zeros(env.n_states)
     else:
         value = np.array(value, dtype=np.float)
-    
-    # TODO:
+ policy = np.zeros(env.n_states, dtype=int)
+
+    delta = abs(theta) + 1
+    iterations = 0 
+
+    while delta > theta and max_iterations > iterations:
+        delta = 0
+
+        for state in range(env.n_states):
+            old_value = value[state]
+            new_value = []
+
+            for action in range(env.n_actions):
+                total_exprected_return = 0
+
+                for next_state in range(env.n_states):
+                    next_state_probability = env.p(next_state, state, action)
+
+                    discounted_reward = env.r(next_state, state, action) + (gamma*value[next_state])
+
+                    total_exprected_return += next_state_probability * discounted_reward
+                
+                new_value.append(total_exprected_return)
+
+            value[state] = max(new_value)
+
+            delta = max(delta, np.abs(old_value - value[state]))
+        
+        iterations += 1
+
+    for state in range(env.n_states):
+        new_actions = []
+        new_action_values = []
+        for action in range(env.n_actions):
+            for next_state in range(env.n_states):
+                next_state_probability = env.p(next_state, state, action=action)
+                
+                discounted_reward = env.r(next_state, state, action=action) + (gamma*value[next_state])
+
+                new_actions.append(action)
+                new_action_values.append(next_state_probability*discounted_reward)
+
+        best_action = new_actions[new_action_values.index(max(new_action_values))]
+        policy[state] = best_action
+
+    print("Number of value iterations :-> ",iterations)
 
     return policy, value
 
