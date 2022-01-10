@@ -295,9 +295,9 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
  policy = np.zeros(env.n_states, dtype=int)
 
     delta = abs(theta) + 1
-    iterations = 0 
+    iti = 0 
 
-    while delta > theta and max_iterations > iterations:
+    while delta > theta and max_iterations > iti:
         delta = 0
 
         for state in range(env.n_states):
@@ -310,9 +310,9 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
                 for next_state in range(env.n_states):
                     next_state_probability = env.p(next_state, state, action)
 
-                    discounted_reward = env.r(next_state, state, action) + (gamma*value[next_state])
+                    disc_reward = env.r(next_state, state, action) + (gamma*value[next_state])
 
-                    total_exprected_return += next_state_probability * discounted_reward
+                    total_exprected_return += next_state_probability * disc_reward
                 
                 new_value.append(total_exprected_return)
 
@@ -320,7 +320,7 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
 
             delta = max(delta, np.abs(old_value - value[state]))
         
-        iterations += 1
+        iti += 1
 
     for state in range(env.n_states):
         new_actions = []
@@ -329,15 +329,15 @@ def value_iteration(env, gamma, theta, max_iterations, value=None):
             for next_state in range(env.n_states):
                 next_state_probability = env.p(next_state, state, action=action)
                 
-                discounted_reward = env.r(next_state, state, action=action) + (gamma*value[next_state])
+                disc_reward = env.r(next_state, state, action=action) + (gamma*value[next_state])
 
                 new_actions.append(action)
-                new_action_values.append(next_state_probability*discounted_reward)
+                new_action_values.append(next_state_probability*disc_reward)
 
         best_action = new_actions[new_action_values.index(max(new_action_values))]
         policy[state] = best_action
 
-    print("Number of value iterations :-> ",iterations)
+    print("The number of value iterations :-> ",iti)
 
     return policy, value
 
