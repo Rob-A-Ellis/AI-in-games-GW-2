@@ -245,14 +245,59 @@ def policy_iteration(env, gamma, theta, max_iterations, policy=None):
     # TODO:
         
     return policy, value
-    
+
 def value_iteration(env, gamma, theta, max_iterations, value=None):
     if value is None:
         value = np.zeros(env.n_states)
     else:
         value = np.array(value, dtype=np.float)
-    
-    # TODO:
+
+    policy = np.zeros(env.n_states, dtype=int)
+
+    delta = abs(theta) + 1
+    iterations = 0 
+
+    while delta > theta and max_iterations > iterations:
+        delta = 0
+
+        for state in range(env.n_states):
+            old_value = value[state]
+            new_value = []
+
+            for action in range(env.n_actions):
+                total_exprected_return = 0
+
+                for next_state in range(env.n_states):
+                    next_state_probability = env.p(next_state, state, action)
+
+                    discounted_reward = env.r(next_state, state, action) + (gamma*value[next_state])
+
+                    total_exprected_return += next_state_probability * discounted_reward
+                
+                new_value.append(total_exprected_return)
+
+            value[state] = max(new_value)
+
+            delta = max(delta, np.abs(old_value - value[state]))
+        
+        iterations += 1
+
+    for state in range(env.n_states):
+        new_actions = []
+        new_action_values = []
+        for action in range(env.n_actions):
+            for next_state in range(env.n_states):
+                next_state_probability = env.p(next_state, state, action=action)
+                
+                discounted_reward = env.r(next_state, state, action=action) + (gamma*value[next_state])
+
+                new_actions.append(action)
+                new_action_values.append(next_state_probability*discounted_reward)
+
+        best_action = new_actions[new_action_values.index(max(new_action_values))]
+        policy[state] = best_action
+
+    print("Number of value iterations :-> ",iterations)
 
     return policy, value
 
@@ -477,48 +522,48 @@ def main():
     
     # print('')
     
-    # print('## Value iteration')
-    # policy, value = value_iteration(env, gamma, theta, max_iterations)
+    print('## Value iteration')
+    policy, value = value_iteration(env, gamma, theta, max_iterations)
+    env.render(policy, value)
+    
+    print('')
+    
+    # print('# Model-free algorithms')
+    # max_episodes = 2000
+    # eta = 0.5
+    # epsilon = 0.5
+    
+    # print('')
+    
+    # print('## Sarsa')
+    # policy, value = sarsa(env, max_episodes, eta, gamma, epsilon, seed=seed)
     # env.render(policy, value)
     
     # print('')
     
-    # print('# Model-free algorithms')
-    max_episodes = 2000
-    eta = 0.5
-    epsilon = 0.5
+    # print('## Q-learning')
+    # policy, value = q_learning(env, max_episodes, eta, gamma, epsilon, seed=seed)
+    # env.render(policy, value)
     
-    print('')
+    # print('')
     
-    print('## Sarsa')
-    policy, value = sarsa(env, max_episodes, eta, gamma, epsilon, seed=seed)
-    env.render(policy, value)
+    # linear_env = LinearWrapper(env)
     
-    print('')
+    # print('## Linear Sarsa')
     
-    print('## Q-learning')
-    policy, value = q_learning(env, max_episodes, eta, gamma, epsilon, seed=seed)
-    env.render(policy, value)
+    # parameters = linear_sarsa(linear_env, max_episodes, eta,
+    #                           gamma, epsilon, seed=seed)
+    # policy, value = linear_env.decode_policy(parameters)
+    # linear_env.render(policy, value)
     
-    print('')
+    # print('')
     
-    linear_env = LinearWrapper(env)
+    # print('## Linear Q-learning')
     
-    print('## Linear Sarsa')
-    
-    parameters = linear_sarsa(linear_env, max_episodes, eta,
-                              gamma, epsilon, seed=seed)
-    policy, value = linear_env.decode_policy(parameters)
-    linear_env.render(policy, value)
-    
-    print('')
-    
-    print('## Linear Q-learning')
-    
-    parameters = linear_q_learning(linear_env, max_episodes, eta,
-                                   gamma, epsilon, seed=seed)
-    policy, value = linear_env.decode_policy(parameters)
-    linear_env.render(policy, value)
+    # parameters = linear_q_learning(linear_env, max_episodes, eta,
+    #                                gamma, epsilon, seed=seed)
+    # policy, value = linear_env.decode_policy(parameters)
+    # linear_env.render(policy, value)
 
 if __name__ == '__main__':
     main()
